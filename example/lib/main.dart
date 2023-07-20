@@ -5,6 +5,8 @@ import 'package:braze_plugin/braze_plugin.dart';
 import 'package:braze_plugin_example/jwt_generator.dart';
 import 'package:flutter/material.dart';
 
+import 'BrazeService.dart';
+
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
@@ -39,14 +41,15 @@ class BrazeFunctionsState extends State<BrazeFunctions> {
   StreamSubscription inAppMessageStreamSubscription;
   StreamSubscription contentCardsStreamSubscription;
   StreamSubscription featureFlagsStreamSubscription;
+  BrazeContentCard  firstContentCard;
+
 
   // Change to `true` to automatically log clicks, button clicks,
   // and impressions for in-app messages and content cards.
   final automaticallyInteract = false;
 
   void initState() {
-    _braze = new BrazePlugin(customConfigs: {replayCallbacksConfigKey: true});
-
+    _braze = BrazeService().plugin
     _braze.setBrazeSdkAuthenticationErrorCallback(
         (BrazeSdkAuthenticationError error) async {
       print('Received an SDK Auth error: $error');
@@ -402,8 +405,9 @@ class BrazeFunctionsState extends State<BrazeFunctions> {
                 this.setState(() {
                   _ccStreamSubscription = 'ENABLED';
                 });
-                contentCardsStreamSubscription = _braze.subscribeToContentCards(
+                final newContentCardsStreamSubscription = BrazeService().plugin.subscribeToContentCards(
                     (List<BrazeContentCard> contentCards) {
+                  firstContentCard = contentCards.first;
                   _contentCardsReceived(contentCards, prefix: "STREAM");
                   return;
                 });
@@ -559,26 +563,11 @@ class BrazeFunctionsState extends State<BrazeFunctions> {
 
   void _contentCardsReceived(List<BrazeContentCard> contentCards,
       {String prefix}) {
-    if (contentCards.isEmpty) {
+      print("[$prefix] Received card: " + firstContentCard.toString());
       ScaffoldMessenger.of(context).showSnackBar(new SnackBar(
-        content: new Text("Empty Content Cards update received."),
-      ));
-      return;
-    }
-    contentCards.forEach((contentCard) {
-      print("[$prefix] Received card: " + contentCard.toString());
-      ScaffoldMessenger.of(context).showSnackBar(new SnackBar(
-        content: new Text("[$prefix] Received card: ${contentCard.toString()}"),
+        content: new Text("[$prefix] Received card: ${firstContentCard.toString()}"),
       ));
 
-      // Programmatically log impression, card click, and dismissal
-      if (automaticallyInteract) {
-        print("[$prefix] Logging impression and body click programmatically.");
-        _braze.logContentCardImpression(contentCard);
-        _braze.logContentCardClicked(contentCard);
-        // _braze.logContentCardDismissed(contentCard);
-      }
-    });
   }
 
   void _featureFlagsReceived(List<BrazeFeatureFlag> featureFlags) {
